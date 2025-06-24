@@ -1,0 +1,122 @@
+@import "tailwindcss";
+
+body {
+  margin: 0;
+  font-family: 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+  background: linear-gradient(120deg, #f0f6ff 0%, #ffe4f0 100%);
+  min-height: 100vh;
+  color: #22223b;
+  line-height: 1.7;
+}
+
+code {
+  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New', monospace;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 10px;
+  background: #e0e7ff;
+}
+::-webkit-scrollbar-thumb {
+  background: #a5b4fc;
+  border-radius: 8px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #6366f1;
+}
+
+/* Card Styles */
+.card {
+  background: linear-gradient(135deg, #fff 60%, #f0f6ff 100%);
+  box-shadow: 0 6px 32px 0 rgba(80, 120, 200, 0.13);
+  border-radius: 1.5rem;
+  transition: box-shadow 0.2s, transform 0.2s;
+  border: 1px solid #e0e7ff;
+  padding: 2rem 1.5rem;
+}
+.card:hover {
+  box-shadow: 0 12px 48px 0 rgba(80, 120, 200, 0.22);
+  transform: translateY(-6px) scale(1.04);
+}
+
+/* Button Styles */
+.btn-primary {
+  background: linear-gradient(90deg, #2563eb 0%, #d946ef 100%);
+  color: #fff;
+  border: none;
+  border-radius: 1rem;
+  padding: 0.9rem 2.2rem;
+  font-weight: 800;
+  font-size: 1.15rem;
+  box-shadow: 0 2px 12px 0 rgba(80, 120, 200, 0.13);
+  transition: background 0.2s, box-shadow 0.2s, transform 0.2s;
+  letter-spacing: 0.03em;
+  outline: none;
+}
+.btn-primary:hover, .btn-primary:focus {
+  background: linear-gradient(90deg, #1e40af 0%, #a21caf 100%);
+  box-shadow: 0 6px 24px 0 rgba(80, 120, 200, 0.22);
+  transform: scale(1.06);
+}
+
+/* Section Titles */
+.section-title {
+  font-size: 2.5rem;
+  font-weight: 900;
+  color: #7c3aed;
+  letter-spacing: -0.03em;
+  margin-bottom: 2rem;
+  text-shadow: 0 4px 16px #e0e7ff;
+  text-align: center;
+  line-height: 1.1;
+}
+
+/* Fancy Divider */
+.divider {
+  height: 4px;
+  width: 80px;
+  background: linear-gradient(90deg, #2563eb 0%, #d946ef 100%);
+  border-radius: 2px;
+  margin: 2rem auto;
+}
+
+/* Table Scrollbar */
+.overflow-x-auto::-webkit-scrollbar {
+  height: 8px;
+}
+.overflow-x-auto::-webkit-scrollbar-thumb {
+  background: #a5b4fc;
+  border-radius: 4px;
+}
+.overflow-x-auto::-webkit-scrollbar-thumb:hover {
+  background: #6366f1;
+}
+
+/* Utility: Responsive container for all pages */
+.page-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem 1rem;
+}
+
+/* Utility: Subtle fade-in animation for all pages */
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: none; }
+}
+.animate-fade-in {
+  animation: fade-in 0.7s cubic-bezier(.4,0,.2,1) both;
+}
+
+/* Utility: Soft shadow for all images */
+img, .pokemon-img {
+  box-shadow: 0 2px 16px 0 rgba(80, 120, 200, 0.10);
+  border-radius: 1rem;
+}

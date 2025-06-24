@@ -1,0 +1,2 @@
+export const REACT_APP_SUPABASE_URL = 'https://gfgogamnsyhhzqhhfhux.supabase.co';
+export const REACT_APP_SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdmZ29nYW1uc3loaHpxaGhmaHV4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDc5MDkyMjAsImV4cCI6MjA2MzQ4NTIyMH0.xlfLpya65M5zx28ZCO_R15leLVBfQ5A_-sN2WH3ZQDc';
