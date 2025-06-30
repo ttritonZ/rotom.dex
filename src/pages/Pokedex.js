@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import PokemonCard from '../components/PokemonCard'
 
@@ -26,16 +26,7 @@ const Pokedex = () => {
     regions: []
   })
 
-  useEffect(() => {
-    fetchFilterOptions()
-    fetchPokemon()
-  }, [])
-
-  useEffect(() => {
-    fetchPokemon()
-  }, [searchTerm, filters])
-
-  const fetchFilterOptions = async () => {
+  const fetchFilterOptions = useCallback(async () => {
     try {
       const [typesRes, abilitiesRes, regionsRes] = await Promise.all([
         supabase.from('Type').select('*').order('type_name'),
@@ -51,9 +42,9 @@ const Pokedex = () => {
     } catch (error) {
       console.error('Error fetching filter options:', error)
     }
-  }
+  }, [])
 
-  const fetchPokemon = async () => {
+  const fetchPokemon = useCallback(async () => {
     setLoading(true)
     try {
       let query = supabase
@@ -67,6 +58,7 @@ const Pokedex = () => {
           ability_hidden_data:ability_hidden(ability_name),
           region_data:region(region_name)
         `)
+        .eq('is_default', true)
 
       // Apply search filter
       if (searchTerm) {
@@ -139,7 +131,12 @@ const Pokedex = () => {
       console.error('Error fetching Pokemon:', error)
     }
     setLoading(false)
-  }
+  }, [searchTerm, filters])
+
+  useEffect(() => {
+    fetchFilterOptions()
+    fetchPokemon()
+  }, [fetchFilterOptions, fetchPokemon])
 
   const handleFilterChange = (filterType, value) => {
     setFilters(prev => ({

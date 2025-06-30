@@ -29,7 +29,7 @@ const PokemonCard = ({ pokemon }) => {
   return (
     <Link to={`/pokemon/${pokemon.sp_id}`} className="block group">
       <div className="card bg-white rounded-2xl shadow-xl hover:shadow-2xl transition-shadow p-6 border border-blue-100 relative overflow-hidden group-hover:scale-105 transform duration-200">
-        {/* Pokémon Image */}
+        {/* Pokemon Image */}
         <div className="flex justify-center mb-4">
           <div className="w-24 h-24 bg-gradient-to-br from-blue-100 to-pink-100 rounded-full flex items-center justify-center overflow-hidden border-4 border-blue-200 shadow-md">
             {pokemon.sprite_url ? (
