@@ -7,7 +7,7 @@ const router = express.Router();
 router.get('/', searchForums);
 router.post('/', authenticateJWT, createForum);
 router.get('/:forum_id/comments', getForumComments);
-router.post('/comment', addComment);
-router.delete('/comment', deleteComment);
+router.post('/comment', authenticateJWT, addComment);
+router.delete('/comment', authenticateJWT, deleteComment);
 
 export default router;

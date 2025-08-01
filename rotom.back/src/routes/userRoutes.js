@@ -1,6 +1,8 @@
 import express from "express";
 const router = express.Router();
 
-// Add user-related routes here
+// import { getUserPokemon } from '../controllers/battleController.js';
+
+// router.get('/:userId/pokemon', getUserPokemon);
 
 export default router;

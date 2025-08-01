@@ -23,7 +23,7 @@ export default function SidebarPanel({ selectedPokemon, closeSidebar }) {
     <div className="fixed right-0 top-0 w-96 h-full bg-white shadow-lg overflow-y-auto p-4 z-50">
       <button onClick={closeSidebar} className="text-xl font-bold mb-4">✖</button>
       <img
-        src={`${import.meta.env.VITE_BACKEND_URL}/public/assets/pokemons/${details.sp_id}.png`}
+        src={`http://localhost:5173/src/assets/pokemons/${details.sp_id}.png`}
         alt={details.pokemon_name}
         className="w-48 mx-auto"
       />
@@ -32,10 +32,46 @@ export default function SidebarPanel({ selectedPokemon, closeSidebar }) {
 
       <div className="mt-4">
         <h3 className="font-semibold">Types:</h3>
-        <p>{details.type_1} {details.type_2 && `/ ${details.type_2}`}</p>
+        <div className="flex gap-2 mt-1">
+          {details.type1_name && (
+            <span className="px-2 py-1 rounded-full text-xs font-semibold text-white bg-green-500">
+              {details.type1_name}
+            </span>
+          )}
+          {details.type2_name && (
+            <span className="px-2 py-1 rounded-full text-xs font-semibold text-white bg-purple-500">
+              {details.type2_name}
+            </span>
+          )}
+        </div>
 
-        <h3 className="font-semibold mt-2">Abilities:</h3>
-        <p>{details.ability_1} {details.ability_2 && `, ${details.ability_2}`}</p>
+        <h3 className="font-semibold mt-3">Abilities:</h3>
+        <div className="space-y-2 mt-1">
+          {details.ability1_name && (
+            <div className="text-sm">
+              <span className="font-medium text-blue-600">{details.ability1_name}</span>
+              {details.ability1_description && (
+                <p className="text-xs text-gray-600 mt-1">{details.ability1_description}</p>
+              )}
+            </div>
+          )}
+          {details.ability2_name && (
+            <div className="text-sm">
+              <span className="font-medium text-green-600">{details.ability2_name}</span>
+              {details.ability2_description && (
+                <p className="text-xs text-gray-600 mt-1">{details.ability2_description}</p>
+              )}
+            </div>
+          )}
+          {details.ability_hidden_name && (
+            <div className="text-sm">
+              <span className="font-medium text-purple-600">{details.ability_hidden_name}</span>
+              {details.ability_hidden_description && (
+                <p className="text-xs text-gray-600 mt-1">{details.ability_hidden_description}</p>
+              )}
+            </div>
+          )}
+        </div>
 
         <h3 className="font-semibold mt-2">Category:</h3>
         <p>{details.category}</p>

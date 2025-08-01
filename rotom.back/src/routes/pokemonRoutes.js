@@ -2,8 +2,10 @@ import express from 'express';
 import {
   getAllDefaultPokemon, getPokemonByName, getPokemonByFilters,
   getAllTypes, getAllAbilities, getAllRegions,
-  getPokemonById, getVariantsByNdex, getPokemonMoves, getEvolutionChain
+  getPokemonById, getVariantsByNdex, getPokemonMoves, getEvolutionChain,
+  getUserPokemon, updatePokemonNickname
 } from '../controllers/pokemonController.js';
+import { authenticateJWT } from '../middleware/authMiddleware.js';
 const router = express.Router();
 
 router.get('/', getAllDefaultPokemon);
@@ -12,6 +14,8 @@ router.post('/filter', getPokemonByFilters);
 router.get('/types', getAllTypes);
 router.get('/abilities', getAllAbilities);
 router.get('/regions', getAllRegions);
+router.get('/user/:userId', getUserPokemon);
+router.put('/nickname/:userPokemonId', authenticateJWT, updatePokemonNickname);
 router.get('/:sp_id', getPokemonById);
 router.get('/variants/:ndex', getVariantsByNdex);
 router.get('/moves/:sp_id', getPokemonMoves);

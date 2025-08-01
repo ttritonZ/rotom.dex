@@ -1,17 +1,18 @@
 import express from 'express';
-import { isAdmin } from '../middleware/authMiddleware.js';
+import { authenticateJWT, isAdmin } from '../middleware/authMiddleware.js';
 import { uploadPokemonGif, uploadImage } from '../middleware/uploadMiddleware.js';
 
 import {
   getAllUsers,
   toggleUserAdmin,
-  addPokemon, editPokemon, deletePokemon,
+  addPokemon, editPokemon, deletePokemon, getAllPokemon,
   addItem, editItem, deleteItem,
-  addCharacter, editCharacter, deleteCharacter
+  addCharacter, editCharacter, deleteCharacter, getDropdownData
 } from '../controllers/adminController.js';
 
 const router = express.Router();
 
+router.use(authenticateJWT);
 router.use(isAdmin);
 
 // User controls
@@ -19,6 +20,8 @@ router.get('/users', getAllUsers);
 router.patch('/users/:user_id/toggle-admin', toggleUserAdmin);
 
 // Pokémons
+router.get('/dropdown-data', getDropdownData);
+router.get('/pokemon', getAllPokemon);
 router.post('/pokemon', addPokemon);
 router.put('/pokemon/:sp_id', editPokemon);
 router.delete('/pokemon/:sp_id', deletePokemon);

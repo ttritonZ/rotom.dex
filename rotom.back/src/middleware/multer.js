@@ -9,7 +9,9 @@ const storage = multer.diskStorage({
     cb(null, uploadDir);
   },
   filename: (req, file, cb) => {
-    cb(null, `${req.body.username}${path.extname(file.originalname)}`);
+    const timestamp = Date.now();
+    const randomString = Math.random().toString(36).substring(2, 15);
+    cb(null, `${timestamp}_${randomString}${path.extname(file.originalname)}`);
   }
 });
 
