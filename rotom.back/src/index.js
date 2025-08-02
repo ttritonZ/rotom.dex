@@ -56,6 +56,7 @@ import forumRoutes from "./routes/forumRoutes.js";
 import adminRoutes from "./routes/adminRoutes.js";
 import shopRoutes from './routes/shopRoutes.js';
 import battleRoutes from "./routes/battleRoutes.js";
+import tradeRoutes from "./routes/tradeRoutes.js";
 
 app.use("/api/pokemon", pokemonRoutes);
 app.use("/api/characters", characterRoutes);
@@ -65,6 +66,7 @@ app.use("/api/forums", forumRoutes);
 app.use("/api/admin", adminRoutes);
 app.use('/api/shop', shopRoutes);
 app.use("/api/battle", battleRoutes);
+app.use("/api/trades", tradeRoutes);
 
 // Socket.IO Authentication Middleware
 io.use((socket, next) => {

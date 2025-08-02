@@ -475,14 +475,24 @@ export const endBattle = async (req, res) => {
       ['finished', winnerId, loserId, battleId]
     );
     
-    // Give experience and money to winner
+    // Give coins to winner and loser
+    const winnerCoins = 2000;
+    const loserCoins = 1000;
     const experienceGain = 100; // Base experience
-    const moneyGain = 50; // Base money
     
+    // Award coins to winner
     await pool.query(
       'UPDATE "User" SET "money_amount" = "money_amount" + $1 WHERE "user_id" = $2',
-      [moneyGain, winnerId]
+      [winnerCoins, winnerId]
     );
+    
+    // Award coins to loser if not a draw (loserId exists)
+    if (loserId) {
+      await pool.query(
+        'UPDATE "User" SET "money_amount" = "money_amount" + $1 WHERE "user_id" = $2',
+        [loserCoins, loserId]
+      );
+    }
     
     // Give experience to winner's Pokemon
     const winnerPokemonResult = await pool.query(`
@@ -514,7 +524,8 @@ export const endBattle = async (req, res) => {
     res.json({ 
       message: 'Battle ended successfully',
       experienceGain,
-      moneyGain
+      coinsGained: winnerCoins,
+      isWinner: true
     });
     
   } catch (error) {

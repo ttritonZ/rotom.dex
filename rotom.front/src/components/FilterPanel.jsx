@@ -1,17 +1,15 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import axios from 'axios';
 import { ChevronDown, ChevronUp, Search, Filter, Sparkles } from 'lucide-react';
 
 const API_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
 
-export default function FilterPanel({ filters, setFilters, applyFilters }) {
+const FilterPanel = ({ filters, setFilters, applyFilters }) => {
   const [types, setTypes] = useState([]);
   const [abilities, setAbilities] = useState([]);
   const [regions, setRegions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [isFiltersOpen, setIsFiltersOpen] = useState(false);
-  
   // State for collapsible sections - all collapsed by default
   const [collapsedSections, setCollapsedSections] = useState({
     types: true,
@@ -20,10 +18,6 @@ export default function FilterPanel({ filters, setFilters, applyFilters }) {
     specialFlags: true,
     stats: true
   });
-
-  const toggleFilters = () => {
-    setIsFiltersOpen(!isFiltersOpen);
-  };
 
   const toggleSection = (section) => {
     setCollapsedSections(prev => ({
@@ -108,34 +102,8 @@ export default function FilterPanel({ filters, setFilters, applyFilters }) {
   }
 
   return (
-    <div className="bg-gradient-to-br from-white via-green-50 to-emerald-50 rounded-3xl border-2 border-green-200/50 shadow-2xl backdrop-blur-sm overflow-hidden">
-      {/* Collapsible Header */}
-      <button
-        onClick={toggleFilters}
-        className="w-full bg-gradient-to-r from-green-500 to-emerald-600 p-6 text-white relative overflow-hidden hover:from-green-600 hover:to-emerald-700 transition-all duration-300 group"
-      >
-        <div className="absolute inset-0 bg-gradient-to-r from-green-400/20 to-emerald-500/20"></div>
-        <div className="relative flex items-center gap-3">
-          <div className="p-2 bg-white/20 rounded-xl backdrop-blur-sm">
-            <Filter className="w-6 h-6" />
-          </div>
-          <div className="flex-1 text-left">
-            <h2 className="text-2xl font-bold tracking-wide">Pokédex Filters</h2>
-            <p className="text-green-100 text-sm">Discover your perfect Pokémon</p>
-          </div>
-          <div className="flex items-center gap-2">
-            <Sparkles className="w-5 h-5 text-yellow-300" />
-            {isFiltersOpen ? 
-              <ChevronUp size={24} className="group-hover:scale-110 transition-transform duration-200" /> : 
-              <ChevronDown size={24} className="group-hover:scale-110 transition-transform duration-200" />
-            }
-          </div>
-        </div>
-      </button>
-
-      {/* Collapsible Content */}
-      {isFiltersOpen && (
-        <div className="p-6 space-y-6 animate-fade-in">
+    <div className="bg-gradient-to-br from-white via-green-50 to-emerald-50 rounded-3xl border-2 border-green-200/50 shadow-2xl backdrop-blur-sm overflow-hidden p-6">
+      <div className="space-y-6">
           {/* Name Filter - Always visible */}
           <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-green-200/50 shadow-lg p-5 hover:shadow-xl transition-all duration-300">
             <label className="block font-bold text-green-700 mb-3 flex items-center gap-2">
@@ -370,8 +338,9 @@ export default function FilterPanel({ filters, setFilters, applyFilters }) {
               </div>
             </div>
           </div>
-        </div>
-      )}
+      </div>
     </div>
   );
-}
+};
+
+export default React.memo(FilterPanel);

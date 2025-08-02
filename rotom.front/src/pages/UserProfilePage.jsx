@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useContext } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { ArrowLeft, Calendar, Trophy, Star, Edit3, Save, X } from 'lucide-react';
+import { ArrowLeft, Calendar, Trophy, Star, Edit3, Save, X, Trash2 } from 'lucide-react';
 import { UserContext } from '../contexts/UserContext';
 
 const API_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
@@ -38,6 +38,8 @@ export default function UserProfilePage() {
   const [editingPokemon, setEditingPokemon] = useState(null);
   const [newNickname, setNewNickname] = useState('');
   const [isUpdating, setIsUpdating] = useState(false);
+  const [pokemonToRelease, setPokemonToRelease] = useState(null);
+  const [isReleasing, setIsReleasing] = useState(false);
 
   useEffect(() => {
     const fetchUserProfile = async () => {
@@ -122,6 +124,37 @@ export default function UserProfilePage() {
   const handleCancelEdit = () => {
     setEditingPokemon(null);
     setNewNickname('');
+  };
+
+  const handleReleaseClick = (pokemon) => {
+    setPokemonToRelease(pokemon);
+  };
+
+  const confirmRelease = async () => {
+    if (!pokemonToRelease) return;
+    
+    try {
+      setIsReleasing(true);
+      await axios.delete(`${API_URL}/api/pokemon/${pokemonToRelease.user_pokemon_id}`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+      });
+      
+      // Update the UI by removing the released Pokemon
+      setUserPokemon(prev => prev.filter(p => p.user_pokemon_id !== pokemonToRelease.user_pokemon_id));
+      setPokemonToRelease(null);
+      
+      // Show success message
+      alert(`${pokemonToRelease.nickname || pokemonToRelease.pokemon_name} has been released!`);
+    } catch (error) {
+      console.error('Error releasing Pokemon:', error);
+      alert('Failed to release Pokemon. Please try again.');
+    } finally {
+      setIsReleasing(false);
+    }
+  };
+
+  const cancelRelease = () => {
+    setPokemonToRelease(null);
   };
 
   const isOwnProfile = () => {
@@ -276,13 +309,25 @@ export default function UserProfilePage() {
                             )}
                           </div>
                           {isOwnProfile() && (
-                            <button
-                              onClick={() => handleEditNickname(pokemon)}
-                              className="ml-2 p-1 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-full transition-all duration-200"
-                              title="Edit nickname"
-                            >
-                              <Edit3 size={14} />
-                            </button>
+                            <div className="flex gap-1">
+                              <button
+                                onClick={() => handleEditNickname(pokemon)}
+                                className="p-1 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-full transition-all duration-200"
+                                title="Edit nickname"
+                              >
+                                <Edit3 size={14} />
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleReleaseClick(pokemon);
+                                }}
+                                className="p-1 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-full transition-all duration-200"
+                                title="Release Pokemon"
+                              >
+                                <Trash2 size={14} />
+                              </button>
+                            </div>
                           )}
                         </div>
 
@@ -331,6 +376,47 @@ export default function UserProfilePage() {
           </div>
         </div>
       </div>
+
+      {/* Release Confirmation Modal */}
+      {pokemonToRelease && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl transform transition-all duration-300 text-center">
+            <div className="w-20 h-20 mx-auto mb-4 bg-gradient-to-br from-red-100 to-pink-100 rounded-full flex items-center justify-center">
+              <Trash2 size={32} className="text-red-500" />
+            </div>
+            <h3 className="text-2xl font-bold text-slate-800 mb-2">
+              Release {pokemonToRelease.nickname || pokemonToRelease.pokemon_name}?
+            </h3>
+            <p className="text-slate-600 mb-6">
+              This will permanently release your {pokemonToRelease.pokemon_name} and it cannot be undone.
+            </p>
+            
+            <div className="flex gap-3">
+              <button
+                onClick={cancelRelease}
+                disabled={isReleasing}
+                className="flex-1 px-6 py-3 border border-slate-300 text-slate-700 rounded-xl hover:bg-slate-50 transition-all duration-200 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmRelease}
+                disabled={isReleasing}
+                className="flex-1 px-6 py-3 bg-gradient-to-r from-red-500 to-pink-600 text-white rounded-xl hover:from-red-600 hover:to-pink-700 transition-all duration-200 disabled:opacity-50"
+              >
+                {isReleasing ? (
+                  <div className="flex items-center justify-center">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    Releasing...
+                  </div>
+                ) : (
+                  'Release'
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Nickname Edit Modal */}
       {editingPokemon && (

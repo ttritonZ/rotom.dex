@@ -1,5 +1,5 @@
 
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useUser } from "../hooks/useUser";
 import { useState, useEffect } from "react";
 
@@ -9,7 +9,7 @@ export default function NavBar() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [isNavigating, setIsNavigating] = useState(false);
-  const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
+  const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false); // State for navbar (keeping for compatibility)
   const [isNavbarMinimized, setIsNavbarMinimized] = useState(false);
   const [lastScrollY, setLastScrollY] = useState(0);
 
@@ -103,25 +103,22 @@ export default function NavBar() {
 
   const navbarColors = getNavbarColors();
 
-  // Handle scroll effect for navbar minimization
+  // Handle scroll effect for navbar (only for scrolled state, no minimization)
   useEffect(() => {
     const handleScroll = () => {
       const currentScrollY = window.scrollY;
       setScrolled(currentScrollY > 20);
-      
-      // Minimize navbar when scrolling down, expand when at top
-      if (currentScrollY <= 50) {
-        setIsNavbarMinimized(false);
-      } else if (currentScrollY > lastScrollY && currentScrollY > 100) {
-        setIsNavbarMinimized(true);
-      }
-      
       setLastScrollY(currentScrollY);
     };
     
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
-  }, [lastScrollY]);
+  }, []);
+  
+  // Keep navbar always expanded
+  useEffect(() => {
+    setIsNavbarMinimized(false);
+  }, [location.pathname]);
 
   // Close mobile menu and profile dropdown when clicking outside
   useEffect(() => {
@@ -156,10 +153,14 @@ export default function NavBar() {
   const userMenuItems = user ? [
   ] : [];
 
+  // Get navigate function from react-router
+  const navigate = useNavigate();
+  
   // Logout handler
   const handleLogout = async () => {
     if (window.confirm('Are you sure you want to sign out?')) {
       await logout(navigate);
+      // The logout function will handle the navigation
     }
   };
 
