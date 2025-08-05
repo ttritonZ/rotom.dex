@@ -1,8 +1,11 @@
 import express from "express";
+import { authenticateJWT } from '../middleware/authMiddleware.js';
+
 const router = express.Router();
 
-// import { getUserPokemon } from '../controllers/battleController.js';
+// Apply authentication middleware to all routes
+router.use(authenticateJWT);
 
-// router.get('/:userId/pokemon', getUserPokemon);
+// User profile routes will go here
 
 export default router;

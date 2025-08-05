@@ -1,3 +1,6 @@
+import pool from '../db.js';
+import { v4 as uuidv4 } from 'uuid';
+
 // Get details for a specific user's Pokémon
 export const getMyPokemonDetail = async (req, res) => {
   try {
@@ -34,23 +37,65 @@ export const getMyPokemonDetail = async (req, res) => {
     res.status(500).json({ error: 'Failed to fetch Pokémon details' });
   }
 };
-import pool from '../db.js';
-import { v4 as uuidv4 } from 'uuid';
-
 // Add battle log entry
 export const addBattleLog = async (req, res) => {
   try {
     const { battleId, message, logType = 'info', userId } = req.body;
     
-    const result = await pool.query(
-      'INSERT INTO "Battle_Log" ("battle_id", "log_message", "log_type", "user_id") VALUES ($1, $2, $3, $4) RETURNING *',
-      [battleId, message, logType, userId]
+    if (!battleId || !message) {
+      return res.status(400).json({ error: 'battleId and message are required' });
+    }
+    
+    // Get the battle to verify it exists and get participants
+    const battleResult = await pool.query(
+      'SELECT * FROM "Battle" WHERE "battle_id" = $1',
+      [battleId]
     );
     
-    res.json(result.rows[0]);
+    if (battleResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Battle not found' });
+    }
+    
+    const battle = battleResult.rows[0];
+    
+    // Insert the battle log
+    const result = await pool.query(
+      `INSERT INTO "Battle_Log" 
+       ("battle_id", "log_message", "log_type", "user_id", "log_timestamp") 
+       VALUES ($1, $2, $3, $4, NOW()) 
+       RETURNING *`,
+      [battleId, message, logType, userId || null]
+    );
+    
+    // Update the battle's battle_time
+    await pool.query(
+      'UPDATE "Battle" SET "battle_time" = NOW() WHERE "battle_id" = $1',
+      [battleId]
+    );
+    
+    // Get the full log with user info for the response
+    const logWithUser = await pool.query(
+      `SELECT bl.*, u.username 
+       FROM "Battle_Log" bl
+       LEFT JOIN "User" u ON bl.user_id = u.user_id
+       WHERE bl.log_id = $1`,
+      [result.rows[0].log_id]
+    );
+    
+    // Emit the new log to all clients in this battle
+    if (req.io) {
+      const roomName = `battle_${battleId}`;
+      req.io.to(roomName).emit('battle_log', logWithUser.rows[0]);
+      
+      // Also emit to recent battles lists
+      if (battle.user1) req.io.to(`user_${battle.user1}`).emit('battle_updated');
+      if (battle.user2) req.io.to(`user_${battle.user2}`).emit('battle_updated');
+    }
+    
+    res.status(201).json(logWithUser.rows[0]);
   } catch (error) {
     console.error('Error adding battle log:', error);
-    res.status(500).json({ error: 'Failed to add battle log' });
+    res.status(500).json({ error: 'Failed to add battle log', details: error.message });
   }
 };
 
@@ -58,52 +103,113 @@ export const addBattleLog = async (req, res) => {
 export const getBattleLogs = async (req, res) => {
   try {
     const { battleId } = req.params;
-    
-    const result = await pool.query(
-      `SELECT bl.*, u.username 
-       FROM "Battle_Log" bl 
-       LEFT JOIN "User" u ON bl.user_id = u.user_id 
-       WHERE bl.battle_id = $1 
-       ORDER BY bl.log_timestamp ASC`,
+
+    // First verify the user has access to this battle
+    const battleCheck = await pool.query(
+      'SELECT * FROM "Battle" WHERE "battle_id" = $1 AND ("user1" = $2 OR "user2" = $2)',
+      [battleId, req.user.userId]
+    );
+
+    if (battleCheck.rows.length === 0) {
+      return res.status(403).json({ error: 'Access denied to these battle logs' });
+    }
+
+    // Fetch logs from Battle_Log
+    const logResult = await pool.query(
+      `SELECT bl.log_id, bl.battle_id, bl.message as log_message, bl.log_type, bl.user_id, bl.log_timestamp, u.username
+       FROM "Battle_Log" bl
+       LEFT JOIN "User" u ON bl.user_id = u.user_id
+       WHERE bl."battle_id" = $1 
+       ORDER BY bl."log_timestamp" ASC`,
       [battleId]
     );
-    
-    res.json(result.rows);
+
+    // Fetch move logs from Battle_Turn
+    const moveResult = await pool.query(
+      `SELECT bt.id as log_id, bt.battle_id, 
+              CONCAT(attacker.username, ' used ', m.move_name, ' on ', defender.username, ' for ', bt.damage, ' damage!') as log_message,
+              'move' as log_type,
+              bt.attacker_id as user_id,
+              bt.created_at as log_timestamp,
+              attacker.username
+       FROM "Battle_Turn" bt
+       LEFT JOIN "User" attacker ON bt.attacker_id = attacker.user_id
+       LEFT JOIN "User" defender ON bt.defender_id = defender.user_id
+       LEFT JOIN "Move" m ON bt.move_id = m.move_id
+       WHERE bt.battle_id = $1
+       ORDER BY bt.created_at ASC`,
+      [battleId]
+    );
+
+    // Merge and sort logs by timestamp
+    const allLogs = [...logResult.rows, ...moveResult.rows].sort((a, b) => new Date(a.log_timestamp) - new Date(b.log_timestamp));
+
+    res.json(allLogs);
   } catch (error) {
     console.error('Error getting battle logs:', error);
     res.status(500).json({ error: 'Failed to get battle logs' });
   }
 };
 
-// Get recent battles with their logs
+// Get recent battles with summary info
 export const getRecentBattles = async (req, res) => {
   try {
     const { userId } = req.params;
-    
+    // Support both user_id and userId from JWT
+    const jwtUserId = req.user.user_id || req.user.userId;
+    if (userId !== String(jwtUserId)) {
+      return res.status(403).json({ error: 'Unauthorized to view these battles' });
+    }
     const result = await pool.query(
-      `SELECT b.*, 
-              u1.username as user1_name,
-              u2.username as user2_name,
-              winner.username as winner_name,
-              loser.username as loser_name,
-              COUNT(bl.log_id) as log_count
+      `SELECT 
+        b.battle_id,
+        b.user1,
+        b.user2,
+        b.battle_time,
+        b.winner,
+        b.loser,
+        b.is_random,
+        b.status,
+        b.battle_code,
+        u1.username as player1_username,
+        u2.username as player2_username,
+        w.username as winner_username,
+        l.username as loser_username,
+        COALESCE(bl.log_count, 0) as log_count,
+        bl.last_message
        FROM "Battle" b
-       LEFT JOIN "User" u1 ON b.user1 = u1.user_id
-       LEFT JOIN "User" u2 ON b.user2 = u2.user_id
-       LEFT JOIN "User" winner ON b.winner = winner.user_id
-       LEFT JOIN "User" loser ON b.loser = loser.user_id
-       LEFT JOIN "Battle_Log" bl ON b.battle_id = bl.battle_id
-       WHERE (b.user1 = $1 OR b.user2 = $1) AND b.status = 'finished'
-       GROUP BY b.battle_id, u1.username, u2.username, winner.username, loser.username
-       ORDER BY b.battle_time DESC
+       LEFT JOIN "User" u1 ON b."user1" = u1."user_id"
+       LEFT JOIN "User" u2 ON b."user2" = u2."user_id"
+       LEFT JOIN "User" w ON b."winner" = w."user_id"
+       LEFT JOIN "User" l ON b."loser" = l."user_id"
+       LEFT JOIN (
+         SELECT 
+           battle_id,
+           COUNT(*) as log_count,
+           MAX(log_message) as last_message
+         FROM "Battle_Log"
+         GROUP BY battle_id
+       ) bl ON bl.battle_id = b.battle_id
+       WHERE (b."user1" = $1 OR b."user2" = $1)
+       ORDER BY b."battle_time" DESC 
        LIMIT 20`,
-      [userId]
+      [jwtUserId]
     );
-    
     res.json(result.rows);
   } catch (error) {
-    console.error('Error getting recent battles:', error);
-    res.status(500).json({ error: 'Failed to get recent battles' });
+    console.error('Error getting recent battles:', {
+      message: error.message,
+      query: error.query,
+      stack: error.stack,
+      detail: error.detail,
+      hint: error.hint,
+      code: error.code
+    });
+    if (error instanceof Error) {
+      res.status(500).json({ error: 'Failed to get recent battles', details: error.message, stack: error.stack });
+    } else {
+      res.status(500).json({ error: 'Failed to get recent battles', details: error });
+    }
   }
 };
 
@@ -216,23 +322,47 @@ export const getActiveBattles = async (req, res) => {
 };
 
 // 📌 1. Create a new battle
+import { BATTLE_LOG_TYPES, BATTLE_STATUS } from '../utils/battleLogTypes.js';
+import { addBattleLogEntry } from '../utils/battleLogger.js';
+
 export const createBattle = async (req, res) => {
   try {
     const { userId, selectedPokemon, isRandom } = req.body;
     const battleCode = uuidv4().slice(0, 6);
 
+    // Get user info for logging
+    const userResult = await pool.query(
+      'SELECT username, user_id FROM "User" WHERE user_id = $1',
+      [userId]
+    );
+
+    if (!userResult.rows.length) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Create the battle
     const result = await pool.query(`
       INSERT INTO "Battle" ("user1", "battle_code", "is_random", "status")
-      VALUES ($1, $2, $3, 'waiting')
-      RETURNING "battle_id", "battle_code"
-    `, [userId, battleCode, isRandom]);
+      VALUES ($1, $2, $3, $4)
+      RETURNING battle_id, battle_code, user1, is_random, status
+    `, [userId, battleCode, isRandom, BATTLE_STATUS.WAITING]);
 
+    // Add selected Pokemon
     for (const pokemonId of selectedPokemon) {
       await pool.query(
         'INSERT INTO "Battle_Pokemons" ("battle_id", "pokemon_used") VALUES ($1, $2)',
         [result.rows[0].battle_id, pokemonId]
       );
     }
+
+    // Log battle creation
+    await addBattleLogEntry(
+      result.rows[0].battle_id,
+      `${userResult.rows[0].username} created a ${isRandom ? 'random' : 'challenge'} battle`,
+      BATTLE_LOG_TYPES.BATTLE_START,
+      userId,
+      req
+    );
 
     res.json(result.rows[0]);
   } catch (err) {
@@ -469,10 +599,32 @@ export const endBattle = async (req, res) => {
     const { battleId } = req.params;
     const { winnerId, loserId } = req.body;
     
+    // Get users' info for logging
+    const usersResult = await pool.query(
+      'SELECT user_id, username FROM "User" WHERE user_id IN ($1, $2)',
+      [winnerId, loserId]
+    );
+
+    const winner = usersResult.rows.find(u => u.user_id === winnerId);
+    const loser = usersResult.rows.find(u => u.user_id === loserId);
+    
+    if (!winner || !loser) {
+      return res.status(404).json({ error: 'Winner or loser not found' });
+    }
+
     // Update battle status
     await pool.query(
       'UPDATE "Battle" SET "status" = $1, "winner" = $2, "loser" = $3 WHERE "battle_id" = $4',
-      ['finished', winnerId, loserId, battleId]
+      [BATTLE_STATUS.FINISHED, winnerId, loserId, battleId]
+    );
+
+    // Log battle completion with winner
+    await addBattleLogEntry(
+      battleId,
+      `Battle ended! ${winner.username} has emerged victorious over ${loser.username}!`,
+      BATTLE_LOG_TYPES.BATTLE_END,
+      null,
+      req
     );
     
     // Give coins to winner and loser
@@ -484,6 +636,15 @@ export const endBattle = async (req, res) => {
     await pool.query(
       'UPDATE "User" SET "money_amount" = "money_amount" + $1 WHERE "user_id" = $2',
       [winnerCoins, winnerId]
+    );
+
+    // Log reward for winner
+    await addBattleLogEntry(
+      battleId,
+      `${winner.username} received ${winnerCoins} coins and ${experienceGain} XP for winning!`,
+      BATTLE_LOG_TYPES.INFO,
+      winnerId,
+      req
     );
     
     // Award coins to loser if not a draw (loserId exists)

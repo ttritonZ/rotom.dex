@@ -55,4 +55,6 @@ export const SocketProvider = ({ children }) => {
       {children}
     </SocketContext.Provider>
   );
-}; 
+};
+
+export { SocketContext }; 

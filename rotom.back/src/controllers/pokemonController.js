@@ -12,9 +12,15 @@ export const getPokemonByFilters = async (req, res) => {
         p.*,
         t1.type_name as type1_name,
         t2.type_name as type2_name
+        , a1.ability_name as ability1_name
+        , a2.ability_name as ability2_name
+        , ah.ability_name as hidden_ability_name
       FROM "Pokemon" p
       LEFT JOIN "Type" t1 ON p.type_1 = t1.type_id
       LEFT JOIN "Type" t2 ON p.type_2 = t2.type_id
+      LEFT JOIN "Ability" a1 ON p.ability_1 = a1.ability_id
+      LEFT JOIN "Ability" a2 ON p.ability_2 = a2.ability_id
+      LEFT JOIN "Ability" ah ON p.ability_hidden = ah.ability_id
       WHERE p."is_default" = true
     `;
     const params = [];
@@ -30,29 +36,49 @@ export const getPokemonByFilters = async (req, res) => {
       });
     }
 
-    if (types && types.length > 0) {
-      // Get type names from type IDs
-      const typeNamesQuery = `SELECT "type_name" FROM "Type" WHERE "type_id" = ANY($${count})`;
-      const typeNamesResult = await pool.query(typeNamesQuery, [types]);
-      const typeNames = typeNamesResult.rows.map(row => row.type_name);
-      
-      if (typeNames.length > 0) {
-        query += ` AND (t1."type_name" = ANY($${count + 1}) OR t2."type_name" = ANY($${count + 1}))`;
-        params.push(typeNames);
+    if (Array.isArray(types) && types.length > 0) {
+      // Filter out empty/invalid type names
+      const validTypes = types.filter(t => typeof t === 'string' && t.trim().length > 0);
+      console.log('Received types filter:', types);
+      console.log('Valid types used in query:', validTypes);
+      if (validTypes.length > 0) {
+        query += ` AND (
+          EXISTS (SELECT 1 FROM unnest($${count}::text[]) AS v WHERE LOWER(t1."type_name") = LOWER(v))
+          OR EXISTS (SELECT 1 FROM unnest($${count}::text[]) AS v WHERE LOWER(t2."type_name") = LOWER(v))
+        )`;
+        params.push(validTypes);
         count++;
       }
     }
 
-    if (abilities && abilities.length > 0) {
-      query += ` AND ("ability_1" = ANY($${count}) OR "ability_2" = ANY($${count}) OR "ability_hidden" = ANY($${count}))`;
-      params.push(abilities);
-      count++;
+    if (Array.isArray(abilities) && abilities.length > 0) {
+      // Accept ability IDs directly from frontend
+      const validAbilities = abilities.filter(a => Number.isInteger(a) || (typeof a === 'string' && /^\d+$/.test(a)));
+      const abilityIds = validAbilities.map(a => typeof a === 'string' ? parseInt(a, 10) : a);
+      console.log('Received abilities filter:', abilities);
+      console.log('Valid ability IDs used in query:', abilityIds);
+      if (abilityIds.length > 0) {
+        query += ` AND (
+          a1.ability_id = ANY($${count})
+          OR a2.ability_id = ANY($${count})
+          OR ah.ability_id = ANY($${count})
+        )`;
+        params.push(abilityIds);
+        count++;
+      }
     }
 
-    if (region && region.length > 0) {
-      query += ` AND p."region" = ANY($${count})`;
-      params.push(region);
-      count++;
+    if (Array.isArray(region) && region.length > 0) {
+      // Only use valid integer region IDs
+      const validRegions = region.filter(r => Number.isInteger(r) || (typeof r === 'string' && /^\d+$/.test(r)));
+      const regionIds = validRegions.map(r => typeof r === 'string' ? parseInt(r, 10) : r);
+      console.log('Received region filter:', region);
+      console.log('Valid region IDs used in query:', regionIds);
+      if (regionIds.length > 0) {
+        query += ` AND p."region" = ANY($${count})`;
+        params.push(regionIds);
+        count++;
+      }
     }
 
     if (legendary) {
@@ -93,6 +119,8 @@ export const getPokemonByFilters = async (req, res) => {
 
     query += ` ORDER BY p."n_dex" ASC`;
 
+    console.log('Final SQL Query:', query);
+    console.log('Query Params:', params);
     const result = await pool.query(query, params);
     res.json(result.rows);
 
@@ -427,7 +455,7 @@ export const updatePokemonNickname = async (req, res) => {
     const ownershipCheck = await pool.query(
       `SELECT up.user_id, p.pokemon_name 
        FROM "User_Pokemons" up
-       JOIN "Pokemon" p ON up.pokemon_id = p.pokemon_id
+       JOIN "Pokemon" p ON up.sp_id = p.sp_id
        WHERE up.user_pokemon_id = $1`,
       [userPokemonId]
     );
@@ -465,10 +493,19 @@ export const updatePokemonNickname = async (req, res) => {
     
     console.log('Nickname updated successfully:', result.rows[0]);
     
+    // Only show nickname if it differs from the species name
+    const updatedPokemon = result.rows[0];
+    let displayName = updatedPokemon.nickname && updatedPokemon.nickname !== updatedPokemon.pokemon_name
+      ? updatedPokemon.nickname
+      : updatedPokemon.pokemon_name;
+
     res.json({ 
       success: true,
       message: 'Nickname updated successfully',
-      pokemon: result.rows[0]
+      pokemon: {
+        ...updatedPokemon,
+        displayName
+      }
     });
     
   } catch (error) {

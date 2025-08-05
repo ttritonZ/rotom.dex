@@ -146,6 +146,7 @@ export default function NavBar() {
   const userNavItems = user ? [
     { path: "/forums", label: "Forums", icon: "💬" },
     { path: "/battles", label: "Battles", icon: "⚔️" },
+    { path: "/trading", label: "Trading", icon: "🔄" },
     { path: "/shop", label: "Shop", icon: "🛒" },
     { path: "/my-pokemon", label: "My Pokémon", icon: "🎯" },
   ] : [];

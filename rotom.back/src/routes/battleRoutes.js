@@ -9,7 +9,8 @@ import {
   getBattle, 
   addBattleLog,
   getBattleLogs,
-  getRecentBattles
+  getRecentBattles,
+  endBattle
 } from '../controllers/battleController.js';
 
 const router = express.Router();
@@ -39,5 +40,8 @@ router.get('/:battleId', getBattle);
 router.post('/logs', addBattleLog);
 router.get('/logs/:battleId', getBattleLogs);
 router.get('/recent/:userId', getRecentBattles);
+
+// End battle route
+router.post('/end/:battleId', endBattle);
 
 export default router;

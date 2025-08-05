@@ -55,11 +55,47 @@ export default function PokedexPage() {
     }
   };
 
+  // Cache types and abilities for ID->name conversion
+  const [allTypes, setAllTypes] = useState([]);
+  const [allAbilities, setAllAbilities] = useState([]);
+
+  useEffect(() => {
+    axios.get(`${API_URL}/api/pokemon/types`).then(res => setAllTypes(res.data)).catch(() => {});
+    axios.get(`${API_URL}/api/pokemon/abilities`).then(res => setAllAbilities(res.data)).catch(() => {});
+  }, []);
+
   const applyFilters = async () => {
     setLoading(true);
     setError(null);
     try {
-      const res = await axios.post(`${API_URL}/api/pokemon/filter`, filters);
+      // Prepare filters for backend
+      let filtersToSend = { ...filters };
+
+      // Convert type IDs to type names
+      if (filters.types && filters.types.length > 0 && allTypes.length > 0) {
+        const typeNames = filters.types
+          .map(id => {
+            const found = allTypes.find(t => t.type_id === id);
+            return found ? found.type_name : id;
+          })
+          .filter(Boolean);
+        filtersToSend.types = typeNames;
+      }
+
+      // Convert region IDs to integers only
+      if (filters.region && filters.region.length > 0) {
+        const regionIds = filters.region
+          .filter(r => Number.isInteger(r) || (typeof r === 'string' && /^\d+$/.test(r)))
+          .map(r => typeof r === 'string' ? parseInt(r, 10) : r);
+        filtersToSend.region = regionIds;
+      }
+
+      // Send ability IDs directly
+      if (filters.abilities && filters.abilities.length > 0) {
+        filtersToSend.abilities = filters.abilities;
+      }
+
+      const res = await axios.post(`${API_URL}/api/pokemon/filter`, filtersToSend);
       setPokemonList(res.data);
     } catch (err) {
       setError('Failed to filter Pokémon.');
@@ -122,7 +158,22 @@ export default function PokedexPage() {
               )}
               {filters.types.length > 0 && (
                 <span className="bg-gradient-to-r from-blue-100 to-blue-200 text-blue-800 px-4 py-2 rounded-full text-sm font-semibold border border-blue-300 shadow-md transform hover:scale-105 transition-transform duration-200">
-                  🎨 Types: {filters.types.join(', ')}
+                  🎨 Types: {filters.types
+                    .map(id => {
+                      const found = allTypes.find(t => t.type_id === id);
+                      return found ? found.type_name : id;
+                    })
+                    .join(', ')}
+                </span>
+              )}
+              {filters.abilities.length > 0 && (
+                <span className="bg-gradient-to-r from-yellow-100 to-yellow-200 text-yellow-800 px-4 py-2 rounded-full text-sm font-semibold border border-yellow-300 shadow-md transform hover:scale-105 transition-transform duration-200">
+                  🧠 Abilities: {filters.abilities
+                    .map(id => {
+                      const found = allAbilities.find(a => a.ability_id === id);
+                      return found ? found.ability_name : id;
+                    })
+                    .join(', ')}
                 </span>
               )}
               {filters.legendary && (
@@ -256,7 +307,7 @@ export default function PokedexPage() {
         </div>
       </div>
 
-      <style jsx>{`
+      <style>{`
         @keyframes fade-in-up {
           from { 
             opacity: 0; 

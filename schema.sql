@@ -21,7 +21,7 @@ CREATE TABLE public.Battle (
   battle_id integer GENERATED ALWAYS AS IDENTITY NOT NULL,
   user1 integer,
   user2 integer,
-  battle_time time without time zone DEFAULT now(),
+  battle_time timestamp with time zone DEFAULT now(),
   winner integer,
   loser integer,
   is_random boolean,
